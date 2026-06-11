@@ -1,5 +1,7 @@
 import os
+import time
 from google import genai
+from google.genai import types
 
 PROMPT = """You are a daily AI briefing curator. Below are today's latest articles about AI and Agentic AI.
 
@@ -12,6 +14,8 @@ Use bullet points. Keep it factual. Include the most important developments firs
 
 Articles:
 {articles}"""
+
+MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
 
 
 def summarize(articles):
@@ -27,11 +31,24 @@ def summarize(articles):
         for a in articles
     )
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=PROMPT.format(articles=articles_text),
-        )
-        return response.text
-    except Exception as e:
-        return f"Error generating briefing: {e}"
+    for model in MODELS:
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=PROMPT.format(articles=articles_text),
+                )
+                return response.text
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    wait = min(2 ** attempt * 5, 60)
+                    print(f"  ⏳ Rate limited on {model}, retrying in {wait}s (attempt {attempt + 1})")
+                    time.sleep(wait)
+                else:
+                    if model != MODELS[-1]:
+                        print(f"  ⚠️ {model} failed, trying next model...")
+                        break
+                    return f"Error generating briefing: {e}"
+
+    return "Error generating briefing: all models exhausted."
