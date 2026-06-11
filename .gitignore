@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+.env
+*.pyc
+node_modules/
+session/
+.wwebjs_auth/
+whatsapp/session/
+briefing.txt
+session.tar.gz
