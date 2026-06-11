@@ -24,6 +24,8 @@ async function main() {
         fs.writeFileSync(fullPath, Buffer.from(content, 'base64'));
     }
 
+    console.log('Session files written, connecting...');
+
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_PATH);
     const { version } = await fetchLatestBaileysVersion();
     const sock = makeWASocket({
@@ -34,20 +36,44 @@ async function main() {
             keys: makeCacheableSignalKeyStore(state.keys),
         },
         syncFullHistory: false,
+        markOnlineOnConnect: false,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async ({ connection }) => {
+    // Timeout guard
+    const timeout = setTimeout(() => {
+        console.error('⏰ Timed out waiting for connection');
+        process.exit(1);
+    }, 30000);
+
+    sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
+        console.log('📡 Connection state:', connection);
+
         if (connection === 'open') {
+            clearTimeout(timeout);
             console.log('✅ WhatsApp connected');
-            const briefing = fs.readFileSync('../briefing.txt', 'utf-8');
-            const jid = TO_NUMBER.includes('@s.whatsapp.net')
-                ? TO_NUMBER
-                : TO_NUMBER + '@s.whatsapp.net';
-            await sock.sendMessage(jid, { text: briefing });
-            console.log('✅ Briefing sent!');
+            try {
+                const briefingPath = path.join(__dirname, '..', 'briefing.txt');
+                const briefing = fs.readFileSync(briefingPath, 'utf-8');
+                const jid = TO_NUMBER.includes('@s.whatsapp.net')
+                    ? TO_NUMBER
+                    : TO_NUMBER + '@s.whatsapp.net';
+                console.log(`📤 Sending to ${jid}...`);
+                await sock.sendMessage(jid, { text: briefing });
+                console.log('✅ Briefing sent!');
+            } catch (err) {
+                console.error('❌ Send failed:', err);
+            }
             process.exit(0);
+        }
+
+        if (connection === 'close') {
+            clearTimeout(timeout);
+            const err = lastDisconnect?.error;
+            const reason = err?.output?.statusCode || err?.message || err?.toString() || 'unknown';
+            console.error(`❌ Connection closed. Reason: ${reason}`);
+            process.exit(1);
         }
     });
 }
