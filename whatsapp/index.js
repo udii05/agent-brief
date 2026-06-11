@@ -18,11 +18,21 @@ if (!SESSION_B64) {
 async function main() {
     // Decode and write session files
     const files = JSON.parse(Buffer.from(SESSION_B64, 'base64').toString());
+    console.log('Session entries:', Object.keys(files).length);
     for (const [relPath, content] of Object.entries(files)) {
         const fullPath = path.join(SESSION_PATH, relPath);
         fs.mkdirSync(path.dirname(fullPath), { recursive: true });
         fs.writeFileSync(fullPath, Buffer.from(content, 'base64'));
     }
+
+    // Verify creds.json exists
+    const credsPath = path.join(SESSION_PATH, 'creds.json');
+    if (!fs.existsSync(credsPath)) {
+        console.error('❌ creds.json not found in session!');
+        process.exit(1);
+    }
+    const creds = JSON.parse(fs.readFileSync(credsPath, 'utf-8'));
+    console.log('Registered ID:', creds?.me?.id || 'unknown');
 
     console.log('Session files written, connecting...');
 
@@ -61,7 +71,8 @@ async function main() {
                     : TO_NUMBER + '@s.whatsapp.net';
                 console.log(`📤 Sending to ${jid}...`);
                 await sock.sendMessage(jid, { text: briefing });
-                console.log('✅ Briefing sent!');
+                console.log('✅ Briefing sent! Waiting for delivery...');
+            await new Promise(r => setTimeout(r, 5000));
             } catch (err) {
                 console.error('❌ Send failed:', err);
             }
