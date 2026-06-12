@@ -51,4 +51,13 @@ def summarize(articles):
                         break
                     return f"Error generating briefing: {e}"
 
-    return "Error generating briefing: all models exhausted."
+    # All models exhausted — fall back to raw article listing
+    print("  ⚠️ All models exhausted, falling back to raw article list")
+    lines = ["🤖 **AI Briefing — Raw Feed**", ""]
+    for a in articles[:6]:
+        lines.append(f"• {a['title']}")
+        lines.append(f"  {a['source']} — {a['url']}")
+        lines.append("")
+    if len(articles) > 6:
+        lines.append(f"*+ {len(articles) - 6} more articles*")
+    return "\n".join(lines)
