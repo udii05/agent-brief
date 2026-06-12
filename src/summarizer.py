@@ -15,7 +15,7 @@ Use bullet points. Keep it factual. Include the most important developments firs
 Articles:
 {articles}"""
 
-MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
+MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
 
 
 def summarize(articles):
