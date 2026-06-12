@@ -44,6 +44,15 @@ jobs:
           cd whatsapp
           npm install
 
+      - name: Restore WhatsApp session cache
+        id: whatsapp-cache
+        uses: actions/cache@v4
+        with:
+          path: whatsapp/session
+          key: whatsapp-session-${{ runner.os }}
+          restore-keys: |
+            whatsapp-session-${{ runner.os }}-
+
       - name: Send via WhatsApp
         env:
           WHATSAPP_SESSION: ${{ secrets.WHATSAPP_SESSION }}

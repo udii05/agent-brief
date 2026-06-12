@@ -16,17 +16,22 @@ if (!SESSION_B64) {
 }
 
 async function main() {
-    // Decode and write session files
-    const files = JSON.parse(Buffer.from(SESSION_B64, 'base64').toString());
-    console.log('Session entries:', Object.keys(files).length);
-    for (const [relPath, content] of Object.entries(files)) {
-        const fullPath = path.join(SESSION_PATH, relPath);
-        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-        fs.writeFileSync(fullPath, Buffer.from(content, 'base64'));
+    // Check if session files already exist (restored from cache)
+    const credsPath = path.join(SESSION_PATH, 'creds.json');
+    if (!fs.existsSync(credsPath)) {
+        console.log('No cached session found, decoding from secret...');
+        const files = JSON.parse(Buffer.from(SESSION_B64, 'base64').toString());
+        console.log('Session entries:', Object.keys(files).length);
+        for (const [relPath, content] of Object.entries(files)) {
+            const fullPath = path.join(SESSION_PATH, relPath);
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, Buffer.from(content, 'base64'));
+        }
+    } else {
+        console.log('Using cached session from previous run');
     }
 
     // Verify creds.json exists
-    const credsPath = path.join(SESSION_PATH, 'creds.json');
     if (!fs.existsSync(credsPath)) {
         console.error('❌ creds.json not found in session!');
         process.exit(1);
