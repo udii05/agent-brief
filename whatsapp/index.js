@@ -1,6 +1,7 @@
 const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
+const pino = require('pino');
 
 const SESSION_PATH = './session';
 const SESSION_B64 = process.env.WHATSAPP_SESSION;
@@ -43,6 +44,8 @@ async function main() {
 
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_PATH);
     const { version } = await fetchLatestBaileysVersion();
+    const logger = pino({ level: 'warn' });
+
     const sock = makeWASocket({
         version,
         browser: Browsers.windows('Chrome'),
@@ -51,7 +54,8 @@ async function main() {
             keys: makeCacheableSignalKeyStore(state.keys),
         },
         syncFullHistory: false,
-        markOnlineOnConnect: false,
+        markOnlineOnConnect: true,
+        logger,
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -74,8 +78,9 @@ async function main() {
                 const jid = TO_NUMBER.includes('@s.whatsapp.net')
                     ? TO_NUMBER
                     : TO_NUMBER + '@s.whatsapp.net';
-                console.log(`📤 Sending to ${jid}...`);
-                await sock.sendMessage(jid, { text: briefing });
+                console.log(`📤 Sending to ${jid} (${(briefing.length / 1024).toFixed(1)} KB)...`);
+                const sent = await sock.sendMessage(jid, { text: briefing });
+                console.log('✅ Message ID:', sent?.key?.id || 'unknown');
                 console.log('✅ Briefing sent! Waiting for delivery...');
             await new Promise(r => setTimeout(r, 5000));
             } catch (err) {
