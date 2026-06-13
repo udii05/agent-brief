@@ -1,10 +1,11 @@
+import argparse
 import os
 from src.news_fetcher import fetch_news
 from src.summarizer import summarize
 from src.formatter import format_briefing
 
 
-def main():
+def main(send_whatsapp: bool = False):
     print("Fetching news...")
     articles = fetch_news()
     print(f"Got {len(articles)} articles")
@@ -20,6 +21,14 @@ def main():
 
     print("Briefing written to briefing.txt")
 
+    if send_whatsapp:
+        from src.whatsapp_client import send_via_node
+        send_via_node()
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--send-whatsapp", action="store_true",
+                        help="Send briefing via WhatsApp after generation")
+    args = parser.parse_args()
+    main(send_whatsapp=args.send_whatsapp)

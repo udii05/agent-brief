@@ -49,14 +49,44 @@ jobs:
         uses: actions/cache@v4
         with:
           path: whatsapp/session
-          key: whatsapp-session-${{ runner.os }}
+          key: whatsapp-session-${{ github.run_id }}
           restore-keys: |
-            whatsapp-session-${{ runner.os }}-
+            whatsapp-session-
 
       - name: Send via WhatsApp
+        id: send-whatsapp
         env:
           WHATSAPP_SESSION: ${{ secrets.WHATSAPP_SESSION }}
           TO_NUMBER: ${{ secrets.TO_NUMBER }}
         run: |
           cd whatsapp
-          node index.js
+          node index.js 2>&1 | tee ../whatsapp-send.log
+
+      - name: Save updated session for next run
+        if: always()
+        shell: bash
+        run: |
+          cd whatsapp
+          if [ -d session ]; then
+            tar czf ../session.tar.gz session/
+            echo "session_size=$(du -sh session | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "WARNING: session/ directory missing" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload session artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-session
+          path: session.tar.gz
+          retention-days: 7
+          overwrite: true
+
+      - name: Upload send log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-send-log
+          path: whatsapp-send.log
+          retention-days: 7
