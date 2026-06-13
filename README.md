@@ -1,3 +1,5 @@
+<div align="center">
+
 # Agent Brief
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
@@ -5,7 +7,9 @@
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-daily-2088FF?logo=githubactions&logoColor=white)](../../actions/workflows/daily-briefing.yml)
 [![License](https://img.shields.io/badge/License-MIT-F05032?logo=opensourceinitiative&logoColor=white)](LICENSE)
 
-Automated daily briefing covering AI/ML and Agentic AI developments. Fetches articles from RSS feeds and NewsAPI, summarizes them via Google Gemini, and delivers the briefing to your WhatsApp number.
+<p><em>Automated daily briefing covering AI/ML and Agentic AI developments. Fetches articles from RSS feeds and NewsAPI, summarizes them via Google Gemini, and delivers the briefing to your WhatsApp number.</em></p>
+
+</div>
 
 ---
 
