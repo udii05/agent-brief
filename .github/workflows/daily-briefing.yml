@@ -83,8 +83,12 @@ jobs:
           retention-days: 7
           overwrite: true
 
+      - name: Show WhatsApp send log
+        if: always()
+        run: cat whatsapp-send.log 2>/dev/null || echo "(no log)"
+
       - name: Upload send log
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: whatsapp-send-log

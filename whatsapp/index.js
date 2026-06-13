@@ -3,11 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
 
+const MAX_MESSAGE_SIZE = 65000; // WhatsApp text limit ~65KB
 const SESSION_PATH = './session';
 const SESSION_B64 = process.env.WHATSAPP_SESSION;
-const TO_NUMBER = process.env.TO_NUMBER;
+const RAW_NUMBER = process.env.TO_NUMBER || '';
 
-if (!TO_NUMBER) {
+if (!RAW_NUMBER) {
     console.error('Missing TO_NUMBER env var');
     process.exit(1);
 }
@@ -15,6 +16,22 @@ if (!SESSION_B64) {
     console.error('Missing WHATSAPP_SESSION env var');
     process.exit(1);
 }
+
+// Normalize: strip +, spaces, dashes, parens
+const CLEAN_NUMBER = RAW_NUMBER.replace(/[\s\-\+\(\)]/g, '');
+const JID = CLEAN_NUMBER.includes('@') ? CLEAN_NUMBER : CLEAN_NUMBER + '@s.whatsapp.net';
+
+function maskJid(jid) {
+    const atIdx = jid.indexOf('@');
+    if (atIdx === -1) return jid;
+    const local = jid.slice(0, atIdx);
+    if (local.length <= 6) return local.slice(0, 2) + '****' + '@' + jid.slice(atIdx + 1);
+    return local.slice(0, 3) + '****' + local.slice(-3) + '@' + jid.slice(atIdx + 1);
+}
+
+console.log('TO_NUMBER raw length:', RAW_NUMBER.length);
+console.log('TO_NUMBER cleaned length:', CLEAN_NUMBER.length);
+console.log('Target JID:', maskJid(JID));
 
 function logSessionDiagnostics() {
     const sessionDir = path.resolve(SESSION_PATH);
@@ -97,8 +114,35 @@ async function main() {
         logger,
     });
 
+    let deliveryReceived = false;
+
     sock.ev.on('creds.update', async () => {
         await saveCreds();
+    });
+
+    // Track message delivery
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        for (const msg of messages) {
+            if (msg.key?.fromMe && msg.key?.id) {
+                console.log('Delivery receipt for message:', msg.key.id);
+                console.log('Status:', msg.status);
+                // status 2 = read, 1 = delivered, 0 = error
+                if (msg.status >= 1) {
+                    deliveryReceived = true;
+                }
+            }
+        }
+    });
+
+    sock.ev.on('messages.update', async (updates) => {
+        for (const update of updates) {
+            if (update.key?.fromMe && update.update?.status !== undefined) {
+                console.log('Message status update:', update.key.id, '-> status', update.update.status);
+                if (update.update.status >= 1) {
+                    deliveryReceived = true;
+                }
+            }
+        }
     });
 
     const connectionTimeout = setTimeout(() => {
@@ -111,7 +155,24 @@ async function main() {
 
         if (connection === 'open') {
             clearTimeout(connectionTimeout);
+
+            // Log the connected account's own JID
+            const myJid = sock.user?.id;
             console.log('WhatsApp connected');
+            console.log('Logged-in as:', myJid ? maskJid(myJid) : 'unknown');
+            console.log('Target JID:', maskJid(JID));
+
+            // Check if logged-in account matches target
+            if (myJid) {
+                const myClean = myJid.split(':')[0].replace(/[\s\-\+\(\)]/g, '');
+                const targetClean = CLEAN_NUMBER;
+                const match = myClean.includes(targetClean) || targetClean.includes(myClean);
+                console.log('Sender-to-target match:', match ? 'YES (self-send)' : 'NO (different accounts?)');
+                if (!match) {
+                    console.warn('WARNING: Your WhatsApp account JID does not contain TO_NUMBER.');
+                    console.warn('You might be sending to a different number than your own!');
+                }
+            }
 
             // Check briefing exists
             const briefingPath = path.join(__dirname, '..', 'briefing.txt');
@@ -129,18 +190,37 @@ async function main() {
                     process.exit(1);
                 }
 
-                const jid = TO_NUMBER.includes('@s.whatsapp.net')
-                    ? TO_NUMBER
-                    : TO_NUMBER + '@s.whatsapp.net';
+                let byteLen = Buffer.byteLength(briefing, 'utf-8');
+                console.log('Briefing size:', (byteLen / 1024).toFixed(1), 'KB');
 
-                console.log(`Sending to ${jid} (${(Buffer.byteLength(briefing, 'utf-8') / 1024).toFixed(1)} KB)...`);
+                let textToSend = briefing;
+                if (byteLen > MAX_MESSAGE_SIZE) {
+                    console.error(`Briefing too large (${byteLen} bytes > ${MAX_MESSAGE_SIZE} limit). Truncating...`);
+                    textToSend = briefing.slice(0, MAX_MESSAGE_SIZE - 100);
+                    byteLen = Buffer.byteLength(textToSend, 'utf-8');
+                }
 
-                const sent = await sock.sendMessage(jid, { text: briefing });
-                console.log('Message ID:', sent?.key?.id || 'unknown');
-                console.log('Briefing sent successfully');
+                console.log(`Sending to ${maskJid(JID)} (${(byteLen / 1024).toFixed(1)} KB)...`);
 
-                // Wait for delivery receipts
-                await new Promise(r => setTimeout(r, 5000));
+                const sent = await sock.sendMessage(JID, { text: textToSend });
+                const msgId = sent?.key?.id || 'unknown';
+                console.log('Message ID:', msgId);
+                console.log('Message sent to WhatsApp server');
+
+                // Wait for delivery receipts (up to 15s)
+                for (let i = 0; i < 15; i++) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    if (deliveryReceived) {
+                        console.log('Delivery confirmed!');
+                        break;
+                    }
+                }
+
+                if (!deliveryReceived) {
+                    console.warn('No delivery receipt received within 15s timeout.');
+                    console.warn('The message was sent to WhatsApp servers but delivery not confirmed.');
+                    console.warn('Possible causes: wrong JID, number not on WhatsApp, or silent drop.');
+                }
             } catch (err) {
                 console.error('Send failed:', err.message);
                 if (err.stack) console.error(err.stack.split('\n').slice(0, 3).join('\n'));
@@ -148,7 +228,7 @@ async function main() {
 
             // Save updated creds before exiting
             await saveCreds();
-            process.exit(0);
+            process.exit(deliveryReceived ? 0 : 0); // Exit 0 for now, log only
         }
 
         if (connection === 'close') {
