@@ -1,13 +1,13 @@
 <div align="center">
 
-# Agent Brief
+<img src="assets/logo.svg" alt="Agent Brief" width="460" />
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Node](https://img.shields.io/badge/Node-22+-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-daily-2088FF?logo=githubactions&logoColor=white)](../../actions/workflows/daily-briefing.yml)
 [![License](https://img.shields.io/badge/License-MIT-F05032?logo=opensourceinitiative&logoColor=white)](LICENSE)
 
-<p><em>Automated daily briefing covering AI/ML and Agentic AI developments. Fetches articles from RSS feeds and NewsAPI, summarizes them via Google Gemini, and delivers the briefing to your WhatsApp number.</em></p>
+<p><em>Automated daily briefing covering AI/ML and Agentic AI developments. Delivered to your WhatsApp every morning.</em></p>
 
 </div>
 
