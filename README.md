@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="Agent Brief" width="460" />
+<img src="assets/logo.svg" alt="Agent Brief" width="260" />
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Node](https://img.shields.io/badge/Node-22+-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
