@@ -150,3 +150,13 @@ Replace the `WHATSAPP_SESSION` secret in GitHub with the newly generated base64 
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<p align="center">
+  Built by <a href="https://www.linkedin.com/in/udita-chakraborty-b890982a2/">Udita Chakraborty</a>
+  <br>
+  <a href="https://www.linkedin.com/in/udita-chakraborty-b890982a2/">
+    <img src="https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white" alt="LinkedIn">
+  </a>
+</p>
