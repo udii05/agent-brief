@@ -1,5 +1,12 @@
 import argparse
 import os
+import sys
+
+# Windows consoles default to cp1252 and can't print emoji in log lines.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from src.news_fetcher import fetch_news
 from src.summarizer import summarize
 from src.formatter import format_briefing
